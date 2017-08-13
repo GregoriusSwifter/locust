@@ -1,0 +1,66 @@
+#define REFCOUNT_H
+
+// Code is from http://www.1024cores.net/home/lock-free-algorithms/queues/non-intrusive-mpsc-node-based-queue
+// License is   http://www.1024cores.net/home/code-license
+
+// TODO: Finish this later. Requires double word atomic support that atomic.h doesn't have yet.
+
+#ifndef TYPES_H
+#include <locust/type.types.h>
+#endif
+
+#ifndef ATOMIC_H
+#include <locust/sched.atomic.h>
+#endif
+
+typedef struct {
+    // low 64 is 'strong inner' counter
+    // high 64 is 'basic inner' counter
+    uint128 volatile state;
+
+    // destruction function
+    void (*destroy)(diff_basic*);
+} diff_basic;
+
+typedef struct {
+    // low 64 is pointer
+    // high 64 is 'outer' counter
+    uint128_atomic state;
+} diff_strong;
+
+typedef diff_basic* basic_ptr;
+typedef diff_strong* strong_ptr;
+
+// Initializes the reference-counted object pointed by 'p'
+// 'destroy' will be used to destroy the object,
+// when number of references drops to 0
+basic_ptr basic_create(void (*destroy)(diff_basic*));
+
+// plain acquire with basic thread-safety
+// should only be called if a thread already owns a reference to the object
+void basic_acquire(basic_ptr p);
+
+// Releases a reference to the object pointed to by 'p'
+void basic_release(basic_ptr p);
+
+// Creats strong ptr with initial value of p's obj
+strong_ptr strong_create(basic_ptr p);
+
+// Strongly thread safe acquire
+basic_ptr strong_acquire(strong_ptr p);
+
+void strong_store(strong_ptr p, basic_ptr p2);
+basic_ptr strong_exchange(strong_ptr p, basic_ptr p2);
+bool strong_compare_exchange(strong_ptr p, basic_ptr* cmp, basic_ptr xchg);
+
+basic_ptr basic_create(void (*destroy)(diff_basic*)) {
+    basic_ptr p;
+    p->state = 1u;
+    p->state = p->state<<64;
+    p->destroy = destroy;
+    return p;
+}
+
+void basic_acquire(basic_ptr p, uint128 basic, uint128 strong) {
+
+}

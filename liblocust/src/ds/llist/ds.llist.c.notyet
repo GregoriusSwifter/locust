@@ -1,0 +1,163 @@
+#ifndef LLIST_H
+#include <locust/ds.llist.h>
+#endif
+
+TYPE_ID_DEF(llist);
+
+typedef struct llist_node {
+    struct llist_node *next;
+    byte data[];
+} llist_node;
+
+META_FIELDS_DEF(llist) = {
+    4, {
+        {TYPE_ID_OF(ptr), sizeof(ptr), "head"},
+        {TYPE_ID_OF(ptr), sizeof(ptr), "tail"},
+        {TYPE_ID_OF(uint64), sizeof(uint64), "len"},
+        {TYPE_ID_OF(ptr), sizeof(ptr), "items_desc"},
+    }
+};
+
+META_DEF(llist, & META_FIELDS_OF(llist), nil);
+
+#ifndef MEM_H
+#include <locust/rt.mem.h>
+#endif
+
+#ifndef DEBUG_H
+#include <locust/rt.debug.h>
+#endif
+
+#ifndef ATOMIC_H
+#include <locust/sched.atomic.h>
+#endif
+
+#include <stdio.h>
+#include <stdlib.h>
+
+nonnullfunc void
+llist_init(llist *self, const meta *type) {
+#if !nonnullfunc_on
+    assert(self != nil);
+    assert(type != nil);
+#endif
+    self->len = 0;
+    self->head = nil;
+    self->tail = nil;
+    self->items_desc = type;
+}
+
+nonnullfunc void
+llist_deinit(llist *self) {
+#if !nonnullfunc_on
+    assert(self != nil);
+#endif
+    const meta *type = self->items_desc;
+    byte tmp[type->size];
+    while (llist_front_pop(self, type, &tmp));
+}
+
+nonnullfunc bool
+llist_front_pop(llist *self, const meta *type, ptr item) {
+#if !nonnullfunc_on
+    assert(self != nil);
+    assert(type != nil);
+    assert(item != nil);
+#endif
+    TYPE_CHECK(self->items_desc, type);
+    if (self->head == nil) {
+        return false;
+    }
+
+    // obtain data
+    llist_node *curr = (llist_node*)self->head;
+    mem_copy(&curr->data, item, type->size);
+
+    // alter container
+	if (self->head == self->tail) {
+		// need to alter tail as well.
+		atomic_store((uint128*)&self->head, 0);
+	} else {
+    	self->head = (ptr)((llist_node*)self->head)->next;
+	}
+    --self->len;
+
+    // cleanup
+    mem_free(curr);
+    return true;
+}
+
+nonnullfunc bool
+llist_back_pop(llist *self, const meta *type, ptr item) {
+#if !nonnullfunc_on
+    assert(self != nil);
+    assert(type != nil);
+    assert(item != nil);
+#endif
+    TYPE_CHECK(self->items_desc, type);
+    if (self->tail == nil) {
+        return false;
+    }
+
+    // obtain data
+    llist_node *curr = (llist_node*)self->tail;
+    mem_copy(&curr->data, item, type->size);
+
+    // alter container
+	if (self->head == self->tail) {
+		// need to alter tail as well.
+		atomic_store((uint128*)&self->head, 0);
+	} else {
+	    self->head = (ptr)((llist_node*)self->head)->next;
+	}
+    --self->len;
+
+    // cleanup
+    mem_free(curr);
+    return true;
+}
+
+nonnullfunc void
+llist_back_push(llist *self, const meta *type, ptr item) {
+#if !nonnullfunc_on
+    assert(self != nil);
+    assert(type != nil);
+    assert(item != nil);
+#endif
+    TYPE_CHECK(self->items_desc, type);
+    llist_node *node = mem_get(sizeof(llist_node)+type->size);
+    assert(node != nil);
+    mem_copy(item, &node->data, type->size);
+    node->next = nil;
+
+    if (self->tail != nil) {
+        ((llist_node*)self->tail)->next = node;
+    } else {
+        self->head = (ptr)node;
+    }
+    self->tail = (ptr)node;
+    ++self->len;
+}
+
+nonnullfunc void
+llist_front_push(llist *self, const meta *type, ptr item) {
+#if !nonnullfunc_on
+    assert(self != nil);
+    assert(type != nil);
+    assert(item != nil);
+#endif
+    TYPE_CHECK(self->items_desc, type);
+    llist_node *node = mem_get(sizeof(llist_node)+type->size);
+    assert(node != nil);
+    mem_copy(item, &node->data, type->size);
+
+    if (self->head != nil) {
+        node->next = (llist_node*)self->head;
+    } else {
+        node->next = (llist_node*)nil;
+        self->tail = (ptr)node;
+    }
+    self->head = (ptr)node;
+    ++self->len;
+}
+

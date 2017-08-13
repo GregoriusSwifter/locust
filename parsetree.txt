@@ -1,0 +1,84 @@
+Locust EBNFish Parse Tree
+Key:
+    'thing'                     Means literally the text of thing, whatever symbol(s) it may be
+    thing                       Lowercase text means another parse rule in the parse tree named thing
+    THING                       Uppercase text is a lexical element named thing
+    ( thing1 thing2 ) thing3    Groups thing1 and thing2 together, but not thing3
+    [ thing ]                   Makes thing optional
+    thing | otherthing          Can be either thing or otherthing
+    thing { otherthing }        Allows any quantity of otherthings, from 0 to infinity
+    %keyword=value              Denotes that the parse rule method takes a keyword argument of this form,
+                                and if it's this value, this line of the rule is authoritative
+
+Tree:
+           top = import
+               | if
+               | for
+               | func_def
+               | proc_def
+               | obj_def
+               | iface_def
+               | assignment
+               | call
+               | expression
+           mid = if
+               | for
+               | assignment
+               | call
+               | expression
+        import = 'import' namespaced [('as' IDENTIFIER | '.*')]
+            if = 'if' boolean EOL INDENT {top} DEDENT
+                  {'else' 'if' boolean EOL INDENT {top} DEDENT}
+                  ['else' EOL INDENT {top} DEDENT]
+       boolean = expression {['>' | '<' | '=' | '!=' | '>=' | '<=' | 'and' | 'or'] boolean}
+           for = 'for'                                       EOL INDENT {top} DEDENT
+               | 'for' boolean                               EOL INDENT {top} DEDENT
+               | 'for' IDENTIFIER 'in' (terminal | interval) EOL INDENT {top} DEDENT
+      var_decl = [type ] IDENTIFIER
+    func_proto = 'func' IDENTIFIER
+                 '(' {var_decl ','} [var_decl] ')'
+                 [ {var_decl ','} [var_decl] ]
+                 EOL
+      func_def = func_proto
+                 INDENT
+                 mid {mid}
+                 DEDENT
+       obj_def = 'obj' IDENTIFIER EOL
+                 INDENT
+                 {var_decl EOL}
+                 {func_def}
+                 DEDENT
+     iface_def = 'iface' IDENTIFIER EOL
+                 INDENT
+                 {var_decl EOL}
+                 {func_proto}
+                 DEDENT
+    expression = (parenthesized | number | namespaced | call) [op expression]
+               | '-' expression %RIGHT
+               | '+' expression %RIGHT
+            op = ('*' | '/' | '+' | '-')
+ parenthesized = '(' expression ')'
+       literal = number | string
+      terminal = call | namespaced | literal
+          call = namespaced '(' [expression {',' expression}] ')'
+        number = FLOAT | INTEGER
+    namespaced = IDENTIFIER {'.' IDENTIFIER}
+    assignment = namespaced ['as' type] ('=' | '+=' | '-=' | '*=' | '/=') expression EOL
+      interval = terminal 'to' terminal {'by' terminal}
+  sub_interval = (namespaced | call) '[' [interval] ']'
+type_primitive = %optional=True [
+                    'int8' |  'int16' |  'int32'  |  'int64'
+                 | 'uint8' | 'uint16' | 'uint32'  | 'uint64'
+                 |  'int'  | 'float'  | 'float32' | 'float64' |   'bool'
+                 |  'byte' | 'error'  |   'ptr'   |   'func'  |   'iface'
+                 %optional=True ]
+ type_compound = %optional=True [
+                  'array' | 'vector' | 'deque' | 'llist' | 'dllist'
+                 | 'map'  |  'chan'  |  'ring' |  'set'  |  'bag'
+                 %optional=True ]
+          type = %optional=True [
+                 type_primitive {type_compound}
+                 %optional=True ]
+          eols = %optional=False EOL
+                 {EOL}
+

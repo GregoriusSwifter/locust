@@ -1,0 +1,107 @@
+#ifndef RING_H
+#include <locust/ds.ring.h>
+#endif
+
+#include <stdio.h>
+
+void test_write() {
+    NEW(ring, r1);
+    uint64 counter = 0;
+    ring_init(&r1, &uint64_desc, 32);
+    
+    while (ring_write(&r1, counter)) {
+        printf("0"); ring_print(&r1); printf("\n"); fflush(stdout);
+        ++counter;
+    }
+    
+    uint64 tmp = 666;
+    while (ring_read(&r1, &tmp)) {
+        printf("derp: %ld", tmp);
+        ring_print(&r1); 
+        printf("\n");
+    }
+    
+    counter = 0;
+    while (ring_write(&r1, counter)) {
+        printf("%ld", counter); ring_print(&r1); printf("\n"); fflush(stdout);
+        ++counter;
+    }
+    
+    ring_read(&r1, &tmp);
+    printf("derp: %ld", tmp);
+    ring_print(&r1); 
+    printf("\n");
+   
+    while (ring_write(&r1, counter)) {
+        printf("%ld", counter); ring_print(&r1); printf("\n"); fflush(stdout);
+        ++counter;
+    }
+
+    ring_read(&r1, &tmp);
+    printf("derp: %ld", tmp);
+    ring_print(&r1); 
+    printf("\n");
+   
+    while (ring_write(&r1, counter)) {
+        printf("%ld", counter); ring_print(&r1); printf("\n"); fflush(stdout);
+        ++counter;
+    }
+}
+
+void test_read() {
+    NEW(ring, r1);
+    uint64 counter = 0;
+    ring_init(&r1, &uint64_desc, 32);
+    
+    while (ring_write(&r1, counter)) {
+        printf("0"); ring_print(&r1); printf("\n"); fflush(stdout);
+        ++counter;
+    }
+    
+    uint64 tmp=666;
+    while (ring_read(&r1, &tmp)) {
+        printf("derp: %ld", tmp);
+        ring_print(&r1); 
+        printf("\n");
+        tmp = 666;
+    }
+}
+
+void test_alternation() {
+    NEW(ring, r1);
+    uint64 counter = 0;
+    ring_init(&r1, &uint64_desc, 32);
+
+    while (ring_write(&r1, counter)) {
+        printf("%ld", counter); ring_print(&r1); printf("\n"); fflush(stdout);
+        ++counter;
+    }
+
+    uint64 tmp = 666;
+    ring_read(&r1, &tmp);
+    printf("derp: %ld", tmp);
+    ring_print(&r1); 
+    printf("\n");
+   
+    while (ring_write(&r1, counter)) {
+        printf("%ld", counter); ring_print(&r1); printf("\n"); fflush(stdout);
+        ++counter;
+    }
+
+    ring_read(&r1, &tmp);
+    printf("derp: %ld", tmp);
+    ring_print(&r1); 
+    printf("\n");
+   
+    while (ring_write(&r1, counter)) {
+        printf("%ld", counter); ring_print(&r1); printf("\n"); fflush(stdout);
+        ++counter;
+    }
+}
+
+int ring_test_main() {
+    test_write();
+    test_read();
+    test_alternation();
+    return 0;
+}

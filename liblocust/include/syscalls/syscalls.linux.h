@@ -1,0 +1,7 @@
+#define SYSCALL_exit(ret, did_err, rval)  SYS_call_1(ret, did_err, SYS_exit, rval)
+#define SYSCALL_fork(ret, did_err)  SYS_call_0(ret, did_err, SYS_fork)
+#define SYSCALL_read(ret, did_err, fd, buf, nbyte)  SYS_call_3(ret, did_err, SYS_read, fd, buf, nbyte)
+#define SYSCALL_write(ret, did_err, fd, buf, nbyte) SYS_call_3(ret, did_err, SYS_write, fd, buf, nbyte)
+#define SYSCALL_mmap(ret, did_err, addr, len, prot, flags, fd, offset) SYS_call_6(ret, did_err, SYS_mmap, addr, len, prot, flags, fd, offset)
+#define SYSCALL_munmap(ret, did_err, addr, len) SYS_call_2(ret, did_err, SYS_mmap, addr, len)
+#define SYSCALL_nanosleep(ret, did_err, time_to_sleep, time_remaining) SYS_call_2(ret, did_err, SYS_nanosleep, time_to_sleep, time_remaining)

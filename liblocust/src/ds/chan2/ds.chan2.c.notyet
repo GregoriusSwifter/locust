@@ -1,0 +1,127 @@
+#ifndef CHAN2_H
+#include <locust/ds.chan2.h>
+#endif
+
+TYPE_ID_DEF(chan2);
+
+META_FIELDS_DEF(chan2) = {
+    4, {
+        {TYPE_ID_OF(ptr), sizeof(ptr), "type"},
+        {TYPE_ID_OF(int64), sizeof(int64), "direction"},
+        {TYPE_ID_OF(deque), sizeof(deque), "rpending"},
+        {TYPE_ID_OF(deque), sizeof(deque), "spending"},
+    }
+};
+
+META_DEF(chan2, & META_FIELDS_OF(chan2), nil);
+
+#ifndef MEM_H
+#include <locust/rt.mem.h>
+#endif
+
+#ifndef DEBUG_H
+#include <locust/rt.debug.h>
+#endif
+
+#ifndef WAITS_H
+#include <locust/sched.waits.h>
+#endif
+
+nonnullfunc void
+chan2_init(chan2 *self, const meta *type) {
+#if !nonnullfunc_on
+    assert(self != nil);
+    assert(type != nil);
+#endif
+	self->type = type;
+	deque_init(&self->rpending, & META_OF(int128));
+	deque_init(&self->spending, & META_OF(int128));
+}
+
+nonnullfunc void
+chan2_deinit(chan2 *self) {
+#if !nonnullfunc_on
+    assert(self != nil);
+#endif
+	deque_deinit(&self->rpending);
+	deque_deinit(&self->spending);
+}
+
+
+nonnullfunc bool
+chan2_send(chan2 *self, const meta *type, ptr item) {
+#if !nonnullfunc_on
+    assert(self != nil);
+    assert(type != nil);
+    assert(item != nil);
+#endif
+	TYPE_CHECK(self->type, type);
+	int64 prev_dir = atomic_fetch_and_add(&self->direction, 1);
+	int128 info = 0;
+	task *t = task_curr();
+	printf("\ntask: %ld \"%s\"\n", t->id, t->name);
+	if (prev_dir < 0) {
+		printf("$ send with receiver\n");
+		// guaranteed a receiver
+		while (deque_front_pop(&self->rpending, & META_OF(int128), &info) != true) {
+			// info also wait rate: waiting and success mutually exclusive here
+			wait_gradual((uint8)info++);
+		}
+		ptr tsk = (ptr)info;
+		info >>= 64;
+		ptr to = (ptr)info;
+		mem_copy(item, to, type->size);
+		task_schedule(t);
+		task_switch_to(tsk); // wake receiver
+		printf("$ send with receiver DONE\n");
+	} else {
+		printf("$ send without receiver\n");
+		// no receiver yet
+		info = (intptr_t)item;
+		info <<= 64;
+		info |= (intptr_t)t;
+		deque_back_push(&self->spending, & META_OF(int128), &info);
+		task_sleep(t); // wait until receiver wakes us.
+		printf("$ send without receiver DONE\n");
+	}
+	return true;
+}
+
+nonnullfunc bool
+chan2_recv(chan2 *self, const meta *type, ptr ret) {
+#if !nonnullfunc_on
+    assert(self != nil);
+    assert(type != nil);
+    assert(ret != nil);
+#endif
+	TYPE_CHECK(self->type, type);
+	int64 prev_dir = atomic_fetch_and_add(&self->direction, -1);
+	int128 info = 0;
+	task *t = task_curr();
+	printf("\ntask: %ld \"%s\"\n", t->id, t->name);
+	if (prev_dir > 0) {
+		printf("$ recv with sender\n");
+		// guaranteed a sender
+		while (deque_front_pop(&self->spending, & META_OF(int128), &info) != true) {
+			// info also wait rate: waiting and success mutually exclusive here
+			wait_gradual((uint8)info++);
+		}
+		ptr tsk = (ptr)info;
+		info >>= 64;
+		ptr from = (ptr)info;
+		mem_copy(from, ret, type->size);
+		task_schedule(tsk); // wake sender
+		printf("$ recv with sender DONE\n");
+	} else {
+		printf("$ recv without sender\n");
+		// no sender yet
+		info = (intptr_t)ret;
+		info <<= 64;
+		info |= (intptr_t)t;
+		deque_back_push(&self->rpending, & META_OF(int128), &info);
+		task_sleep(t); // wait until receiver wakes us.
+		printf("$ recv without sender DONE\n");
+	}
+	return true;
+}
+

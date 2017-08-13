@@ -1,0 +1,73 @@
+#define IO_H
+
+#ifndef TYPES_H
+#include <locust/type.types.h>
+#endif
+
+#ifndef STRING_H
+#include <locust/type.string.h>
+#endif
+
+#ifndef ERROR_H
+#include <locust/type.error.h>
+#endif
+
+typedef struct {
+    byte   mode;
+    anyptr  _f;
+    string name;
+} file;
+
+#define file__type_id ((type_id const)258)
+META_DECL(file);
+
+static type_desc DESCRIBE(file) = {
+    true, TYPE_ID(file), 3, sizeof(file), S("thread"), {
+        {TYPE_ID(uint32), sizeof(uint32), S("mode")},
+        {TYPE_ID(anyptr), sizeof(anyptr), S("_f")},
+        {TYPE_ID(string), sizeof(string), S("name")},
+    }
+};
+
+// File mode arguments
+enum {
+    // Pick one if you want buffering. (0 bits is fixed length buffering)
+    // BUFF_LEN = 0x00, // implicit default
+    BUFF_LINE = 0x01,
+    BUFF_NONE = 0x02,
+    BUFF_ALL  = 0x03,
+
+    // For getting all relevant buffer bits
+    _BUFF_BITMASK = 0x03, // not actual arg to pass in.
+
+    // Mix in any of the following
+    READ  = 0x04,
+    WRITE = 0x08,
+};
+
+// file errors
+error e_not_file = { .id=1, .name=S("not_file"), .info=S("Passed erroneous or nil file pointer.")};
+error e_not_readable = { .id=2, .name=S("not_readable"), .info=S("Attempted read on file not marked readable.")};
+error e_not_writeable = { .id=3, .name=S("not_writeable"), .info=S("Attempted write on file not marked writeable.")};
+
+// file manipulations
+error file_open(file *f, string filename, byte mode);
+error file_close(file *f);
+error file_flush(file *f);
+
+// reading functions
+error file_read(file *f, ptr str);
+
+// writing functions
+error file_write(file *f, string str);
+
+// status queries
+#define file_is_readable(fileptr)  ((fileptr) != NULL && ((fileptr)->mode & READ) != 0)
+#define file_is_writeable(fileptr) ((fileptr) != NULL && ((fileptr)->mode & WRITE) != 0)
+#define file_is_buffered(fileptr)      ((fileptr) != NULL && ((fileptr)->mode & BUFF_NONE) == 0)
+#define file_is_line_buffered(fileptr) ((fileptr) != NULL && ((fileptr)->mode & BUFF_LINE) != 0)
+#define file_is_len_buffered(fileptr)  ((fileptr) != NULL && ((fileptr)->mode & _BUFF_BITMASK) == 0)
+#define file_is_all_buffered(fileptr)  ((fileptr) != NULL && ((fileptr)->mode & BUFF_ALL) == BUFF_ALL)
+
+bool file_is_eof(file *f);
+

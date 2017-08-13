@@ -1,0 +1,37 @@
+#ifndef SCHEDULING_H
+#include <locust/sched.h"
+#endif
+
+typedef urange {
+    uinty start;
+    uinty end;
+    uinty stride;
+} urange;
+
+typedef range {
+    inty start;
+    inty end;
+    inty stride;
+} range;
+
+
+typedef uint64(^urangeCR)(void);
+
+urangeCR urange_iter(urange r) {
+    __block uinty counter = r.start;
+
+    CR_INIT;
+
+    urangeCR gen;
+
+    gen = ^ {
+        CR_START;
+        do {
+            CR_YIELD(counter);
+            counter += r.stride;
+        } while(counter != 0);
+        CR_STOP(0);
+    };
+
+    return Block_copy(gen);
+}

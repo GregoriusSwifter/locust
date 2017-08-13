@@ -1,0 +1,15 @@
+#include <stdio.h>
+#include <locust.h>
+
+int main(void) {
+	printf("Hallo world!\n");
+	uint32 proc_total = inspect_proc_total();
+	debug("proc_total: %u\n", proc_total);
+	uint32 proc_active = inspect_proc_active();
+	debug("proc_active: %u\n", proc_active);
+	uint32 cache_line_size = inspect_cache_line_size();
+	debug("cache_line_size: %u", cache_line_size);
+
+	threads_init(proc_active);
+	threads_launch();
+}

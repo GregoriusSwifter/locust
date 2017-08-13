@@ -1,0 +1,7 @@
+#ifndef REFCOUNT_H
+#include <refcount.h>
+#endif
+
+
+// Code is from http://www.1024cores.net/home/lock-free-algorithms/queues/non-intrusive-mpsc-node-based-queue
+// License is   http://www.1024cores.net/home/code-license

@@ -1,0 +1,9 @@
+syntax: glob
+
+# local working only directories
+analysis/
+build/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+

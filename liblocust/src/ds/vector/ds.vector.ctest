@@ -1,0 +1,42 @@
+#ifndef VECTOR_H
+#include <locust/ds.vector.h>
+#endif
+
+#include <stdio.h>
+
+void test_vector() {
+    uint64 counter = 0;
+    printf("1\n"); fflush(stdout);
+    NEW(vector, v1);
+    printf("2\n");
+    fflush(stdout);
+    vector_init(&v1, describe(&counter));
+    printf("3\n");
+    fflush(stdout);
+    vector_push(&v1, counter++);
+    printf("4\n");
+    fflush(stdout);
+    vector_push(&v1, counter++);
+    printf("5\n");
+    fflush(stdout);
+    vector_push(&v1, counter++);
+    printf("6\n");
+    fflush(stdout);
+    vector_push(&v1, counter++);
+    printf("7\n");
+    fflush(stdout);
+    vector_push(&v1, counter++);
+    printf("uint64_desc %p\n", describe(&counter));
+    fflush(stdout);
+    
+    uint64 tmp;
+    for (uint64 i=v1.len; i>0; --i) {
+        vector_pop(&v1, &tmp);
+        printf("derp: %ld\n", tmp);
+    }
+}
+
+int vector_test_main () {
+    test_vector();
+    return 0;
+}

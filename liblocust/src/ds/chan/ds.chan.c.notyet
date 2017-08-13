@@ -1,0 +1,91 @@
+#ifndef CHAN_H
+#include <locust/ds.chan.h>
+#endif
+
+TYPE_ID_DEF(chan);
+
+META_FIELDS_DEF(chan) = {
+    2, {
+        {TYPE_ID_OF(deque), sizeof(deque), "q1"},
+		{TYPE_ID_OF(deque), sizeof(deque), "q2"},
+    }
+};
+
+META_DEF(chan, & META_FIELDS_OF(chan), nil);
+
+#ifndef MEM_H
+#include <locust/rt.mem.h>
+#endif
+
+#ifndef DEBUG_H
+#include <locust/rt.debug.h>
+#endif
+
+#ifndef TASK_H
+#include <locust/sched.task.h>
+#endif
+
+nonnullfunc void
+chan_init(chan *self, const meta *type) {
+#if !nonnullfunc_on
+    assert(self != nil);
+    assert(type != nil);
+#endif
+	deque_init(&self->q1, type);
+	deque_init(&self->q2, type);
+}
+
+nonnullfunc void
+chan_deinit(chan *self) {
+#if !nonnullfunc_on
+    assert(self != nil);
+#endif
+	deque_deinit(&self->q1);
+	deque_deinit(&self->q2);
+}
+
+nonnullfunc void
+chan_front_send(chan *self, const meta *type, ptr item) {
+#if !nonnullfunc_on
+    assert(self != nil);
+    assert(type != nil);
+    assert(item != nil);
+#endif
+	deque_back_push(&self->q1, type, item);
+	task_yield(task_curr());
+}
+
+nonnullfunc bool
+chan_front_recv(chan *self, const meta *type, ptr ret) {
+#if !nonnullfunc_on
+    assert(self != nil);
+    assert(type != nil);
+    assert(ret != nil);
+#endif
+	bool popped = deque_front_pop(&self->q2, type, ret);
+	task_yield(task_curr());
+	return popped;
+}
+
+nonnullfunc void
+chan_back_send(chan *self, const meta *type, ptr item) {
+#if !nonnullfunc_on
+    assert(self != nil);
+    assert(type != nil);
+    assert(item != nil);
+#endif
+	deque_back_push(&self->q2, type, item);
+	task_yield(task_curr());
+}
+
+nonnullfunc bool
+chan_back_recv(chan *self, const meta *type, ptr ret) {
+#if !nonnullfunc_on
+    assert(self != nil);
+    assert(type != nil);
+    assert(ret != nil);
+#endif
+	bool popped = deque_front_pop(&self->q1, type, ret);
+	task_yield(task_curr());
+	return popped;
+}

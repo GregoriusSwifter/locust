@@ -1,0 +1,188 @@
+#ifndef DLLIST_H
+#include <locust/ds.dllist.h>
+#endif
+
+TYPE_ID_DEF(dllist);
+
+typedef struct dllist_node {
+    struct dllist_node *prev;
+    struct dllist_node *next;
+    byte data[];
+} dllist_node;
+
+META_FIELDS_DEF(dllist) = {
+    4, {
+        {TYPE_ID_OF(uint64), sizeof(uint64), "len"},
+        {TYPE_ID_OF(ptr), sizeof(ptr), "head"},
+        {TYPE_ID_OF(ptr), sizeof(ptr), "tail"},
+        {TYPE_ID_OF(ptr), sizeof(ptr), "items_desc"},
+    }
+};
+
+META_DEF(dllist, & META_FIELDS_OF(dllist), nil);
+
+#ifndef ATOMIC_H
+#include <locust/sched.atomic.h>
+#endif
+
+#ifndef MEM_H
+#include <locust/rt.mem.h>
+#endif
+
+#ifndef DEBUG_H
+#include <locust/rt.debug.h>
+#endif
+
+#include <stdio.h>
+#include <stdlib.h>
+
+nonnullfunc void
+dllist_init(dllist *self, const meta *type) {
+#if !nonnullfunc_on
+    assert(self != nil);
+    assert(type != nil);
+#endif
+    self->len = 0;
+    self->head = nil;
+    self->tail = nil;
+    self->items_desc = type;
+    return;
+}
+
+nonnullfunc void
+dllist_deinit(dllist *self) {
+#if !nonnullfunc_on
+    assert(self != nil);
+#endif
+    const meta *type = self->items_desc;
+    byte tmp[type->size];
+    while (dllist_front_pop(self, type, &tmp));
+}
+
+nonnullfunc uint64
+dllist_len(dllist *self) {
+#if !nonnullfunc_on
+    assert(self != nil);
+#endif
+    return self->len;
+}
+
+nonnullfunc bool
+dllist_front_pop(dllist *self, const meta *type, ptr item) {
+#if !nonnullfunc_on
+    assert(self != nil);
+    assert(type != nil);
+    assert(item != nil);
+#endif
+    TYPE_CHECK(self->items_desc, type);
+
+    if (self->head == nil) {
+        return false;
+    }
+
+    // obtain data
+    dllist_node *curr = self->head;
+    mem_copy(&curr->data, item, type->size);
+
+	// alter container
+	if (self->head == self->tail) {
+		// need to alter tail as well.
+		atomic_store((uint128*)&self->head, 0);
+	} else {
+    	self->head = ((dllist_node*)self->head)->next;
+	    ((dllist_node*)self->head)->prev = nil;
+	}
+    --self->len;
+
+    // cleanup
+    mem_free(curr);
+    return true;
+}
+
+nonnullfunc bool
+dllist_back_pop(dllist *self, const meta *type, ptr item) {
+#if !nonnullfunc_on
+    assert(self != nil);
+    assert(type != nil);
+    assert(item != nil);
+#endif
+    TYPE_CHECK(self->items_desc, type);
+
+    if (self->tail == nil) {
+        return false;
+    }
+
+    // obtain data
+    dllist_node *curr = self->tail;
+    mem_copy(&curr->data, item, type->size);
+
+	// alter container
+	if (self->head == self->tail) {
+		// need to alter tail as well.
+		atomic_store((uint128*)&self->head, 0);
+	} else {
+	    self->tail = curr->prev;
+	    ((dllist_node*)self->tail)->next = nil;
+	}
+    --self->len;
+
+    // cleanup
+    mem_free(curr);
+    return true;
+}
+
+nonnullfunc void
+dllist_back_push(dllist *self, const meta *type, ptr item) {
+#if !nonnullfunc_on
+    assert(self != nil);
+    assert(type != nil);
+    assert(item != nil);
+#endif
+    TYPE_CHECK(self->items_desc, type);
+
+    dllist_node *node = mem_get(sizeof(dllist_node)+type->size);
+    assert(node != nil);
+    mem_copy(item, &node->data, type->size);
+    node->next = nil;
+    node->prev = nil;
+
+    if (self->tail != nil) {
+        dllist_node *prev = self->tail;
+        prev->next = node;
+        node->prev = prev;
+    } else {
+        self->head = node;
+    }
+
+    self->tail = node;
+    ++self->len;
+    return;
+}
+
+nonnullfunc void
+dllist_front_push(dllist *self, const meta *type, ptr item) {
+#if !nonnullfunc_on
+    assert(self != nil);
+    assert(type != nil);
+    assert(item != nil);
+#endif
+    TYPE_CHECK(self->items_desc, type);
+
+    dllist_node *node = mem_get(sizeof(dllist_node)+type->size);
+    assert(node != nil);
+    mem_copy(item, &node->data, type->size);
+    node->prev = nil;
+
+    if (self->head != nil) {
+        node->next = self->head;
+        ((dllist_node*)self->head)->prev = node;
+    } else {
+        node->next = nil;
+        self->tail = node;
+    }
+
+    self->head  = node;
+    ++self->len;
+    return;
+}
+
